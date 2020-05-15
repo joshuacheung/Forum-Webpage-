@@ -128,7 +128,8 @@ let init = (app) => {
         let p = app.vue.posts[post_idx];
         if (p.id === null) {
             // TODO:
-            // If the post has never been added to the server, simply deletes it.
+            // If the post has never been added to the server,
+            // simply deletes it from the list of posts.
         } else {
             // TODO: Deletes it on the server.
         }
@@ -180,9 +181,9 @@ let init = (app) => {
                 is_reply: 1, // This is a reply.
             },
         ];
-        // We set the posts. This is how it is done in reality. 
-        app.vue.posts = app.index(posts);
         // TODO: Load the posts from the server instead.
+        // We set the posts.
+        app.vue.posts = app.index(posts);
     };
 
     // Call to the initializer.
