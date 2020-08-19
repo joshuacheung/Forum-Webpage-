@@ -23,6 +23,9 @@ The path follows the bottlepy syntax.
 
 session, db, T, auth, and tempates are examples of Fixtures.
 Warning: Fixtures MUST be declared with @action.uses({fixtures}) else your app will result in undefined behavior
+
+CITED: TUTOR MATAN BRONER SECTION 5/18, 5/19
+
 """
 
 import random
@@ -35,44 +38,6 @@ from py4web.utils.url_signer import URLSigner
 
 from yatl.helpers import A
 from . common import db, session, T, cache, auth, signed_url
-
-TEST_POSTS = [
-    {
-        "id": 1,
-        "content": "I love apples",
-        "author": "Joe Smith",
-        "email": "joe@ucsc.edu",
-        "reply_id": None, # Main post.  Followed by its replies if any.
-    },
-    {
-        "id": 2,
-        "content": "I love bananas",
-        "author": "Elena Bianchi",
-        "email": "elena@ucsc.edu",
-        "is_reply": 1,
-    },
-    {
-        "id": 3,
-        "content": "I prefer pears",
-        "author": "Joel Framon",
-        "email": "joel@ucsc.edu",
-        "is_reply": 1,
-    },
-    {
-        "id": 4,
-        "content": "I love tomatoes",
-        "author": "Olga Kabarova",
-        "email": "olga@ucsc.edu",
-        "is_reply": None, # Main post.  Followed by its replies if any.
-    },
-    {
-        "id": 5,
-        "content": "I prefer nuts",
-        "author": "Hao Wang",
-        "email": "hwang@ucsc.edu",
-        "is_reply": 4,
-    },
-]
 
 
 url_signer = URLSigner(session)
@@ -100,26 +65,35 @@ def index():
 @action('posts', method="GET")
 @action.uses(db, auth.user, session, url_signer.verify())
 def get_posts():
-    # You can use this shortcut for testing at the very beginning.
-    # TODO: complete.
-    return dict(posts=TEST_POSTS)
+    complete_posts = []
+    posts = db(db.post.is_reply == None).select(
+        orderby=~db.post.post_date).as_list()
+    for post in posts:
+        post["author"] = get_name_from_email(post["email"])
+        post_arr = [post]
+        replies = db(db.post.is_reply == post["id"]).select(
+            orderby=~db.post.post_date).as_list()
+        for reply in replies:
+            reply["author"] = get_name_from_email(reply["email"])
+        post_arr = post_arr + replies
+        complete_posts = complete_posts + post_arr
+    return dict(posts=complete_posts)
 
 
 @action('posts',  method="POST")
 @action.uses(db, auth.user)  # etc.  Put here what you need.
 def save_post():
-    # To help with testing.
-    # TODO: optional.
-    time.sleep(1)
-    if random.random() < 0.1:
-        raise HTTP(500)
-    id = request.json.get('id') # Note: id can be none.
+    
+    post_id = request.json.get('id') # Note: id can be none.
     content = request.json.get('content')
     is_reply = request.json.get('is_reply')
-    # TODO: complete.
-    # If id is None, this means that this is a new post that needs to be
-    # inserted.  If id is not None, then this is an update.
-    return dict(content=content, id=id)
+    
+    new_id = db.post.update_or_insert(
+        db.post.id == post_id,
+        is_reply=is_reply,
+        content=content
+    )
+    return dict(content=content, id=new_id)
 
 
 @action('delete_post',  method="POST")
@@ -129,7 +103,7 @@ def delete_post():
        (db.post.id == request.json.get('id'))).delete()
     return "ok"
 
-
+# delete function before turning in 
 @action('delete_all_posts')
 @action.uses(db)
 def delete_all_posts():
